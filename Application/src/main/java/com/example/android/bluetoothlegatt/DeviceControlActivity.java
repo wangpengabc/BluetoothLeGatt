@@ -16,6 +16,7 @@
 
 package com.example.android.bluetoothlegatt;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
@@ -28,7 +29,10 @@ import android.content.ServiceConnection;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
 import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.view.Menu;
@@ -40,6 +44,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -111,6 +116,7 @@ public class DeviceControlActivity extends Activity {
     // ACTION_GATT_SERVICES_DISCOVERED: discovered GATT services.
     // ACTION_DATA_AVAILABLE: received data from the device.  This can be a result of read
     //                        or notification operations.
+    private int new_point_cnt = 0;
     private final BroadcastReceiver mGattUpdateReceiver = new BroadcastReceiver() {
         @RequiresApi(api = Build.VERSION_CODES.O)
         @Override
@@ -132,79 +138,96 @@ public class DeviceControlActivity extends Activity {
 //                displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
 
                 byte[] data_tmp = intent.getByteArrayExtra(BluetoothLeService.EXTRA_DATA);
-                int data_point;
-                int fsm_stage = 0;
-                int data_len = 0;
-                int data_cnt = 0;
+                int data_point=0;
+//                int fsm_stage = 0;
+//                int data_len = 0;
+//                int data_cnt = 0;
                 if (data_tmp != null) {
 //                    StringBuilder stringBuilder = new StringBuilder(data_tmp.length);
 //                    for(byte byteChar : data_tmp)
 //                        stringBuilder.append(String.format("%02X ", byteChar));
 //                    Log.i( "received data: ", stringBuilder.toString());
 
+                    new_point_cnt += data_tmp.length;
                     for (byte tmp : data_tmp) {
+////                        Log.i("fsm", "fsm_stage:".concat(String.valueOf(fsm_stage)));
 //                        Log.i("fsm", "fsm_stage:".concat(String.valueOf(fsm_stage)));
-                        Log.i("fsm", "fsm_stage:".concat(String.valueOf(fsm_stage)));
-                        Log.i("received data:", "received data: ".concat(String.format("%02X ", tmp)));
-                        switch (fsm_stage) {
-                            case 0:
-                                if (Byte.compare(tmp, (byte)0xAA) ==  0) {
-                                    fsm_stage = 1;
-                                }
-                                break;
-
-                            case 1:
-                                if (Byte.compare(tmp, (byte)0x55) ==  0) {
-                                    fsm_stage = 2;
-                                } else {
-                                    fsm_stage = 0;
-                                }
-                                break;
-
-                            case 2:
-                            data_len = Byte.toUnsignedInt(tmp);
-//                                data_len = tmp;
-                                fsm_stage = 3;
-                                break;
-
-                            case 3:
-                                if (Byte.compare(tmp, (byte)0xA8) == 0) {
-                                    fsm_stage = 4;
-                                } else {
-                                    fsm_stage = 0;
-                                }
-                                break;
-
-                            case 4:
-                                if (data_cnt < data_len) {
-                                    data_cnt++;
-                                    if (data_cnt == data_len) {
-                                        fsm_stage = 0;
-                                    }
+//                        Log.i("received data:", "received data: ".concat(String.format("%02X ", tmp)));
+//                        switch (fsm_stage) {
+//                            case 0:
+//                                if (Byte.compare(tmp, (byte)0xAA) ==  0) {
+//                                    fsm_stage = 1;
+//                                }
+//                                break;
+//
+//                            case 1:
+//                                if (Byte.compare(tmp, (byte)0x55) ==  0) {
+//                                    fsm_stage = 2;
+//                                } else {
+//                                    fsm_stage = 0;
+//                                }
+//                                break;
+//
+//                            case 2:
+//                            data_len = Byte.toUnsignedInt(tmp);
+////                                data_len = tmp;
+//                                fsm_stage = 3;
+//                                break;
+//
+//                            case 3:
+//                                if (Byte.compare(tmp, (byte)0xA8) == 0) {
+//                                    fsm_stage = 4;
+//                                } else {
+//                                    fsm_stage = 0;
+//                                }
+//                                break;
+//
+//                            case 4:
+//                                if (data_cnt < data_len) {
+//                                    data_cnt++;
+//                                    if (data_cnt == data_len) {
+//                                        fsm_stage = 0;
+//                                    }
                                 data_point = Byte.toUnsignedInt(tmp);
-//                                    data_point = tmp;
+////                                    data_point = tmp;
                                     if (drawDataQueue.size() > refreshSize) {
                                         drawDataQueue.poll();
                                     }
                                     drawDataQueue.add(data_point);
-                                }
-                                break;
-
-                            default:
-                                break;
-                        }
+//                                }
+//                                break;
+//
+//                            default:
+//                                break;
+//                        }
                     }
                 }
+
                 // 调用画图函数
                 // 产生线条 - 绘图
                 if (drawDataQueue != null) {
-                    Log.i("Queue is not empty", "Queue is not empty");
-                    generateLine(drawDataQueue);
-                    drawChart(ppgChart, "PPG");
+//                    if (new_point_cnt > 25) {
+//                        new_point_cnt = 0;
+                        Log.i("Queue is not empty", "Queue is not empty");
+                        generateLine(drawDataQueue);
+                        drawChart(ppgChart, "PPG");
+//                    }
                 }
             }
         }
     };
+
+//    // 所以要这么传
+//    @SuppressLint("HandlerLeak")
+//    private Handler mHandler = new Handler(Looper.getMainLooper()) {
+//        @Override
+//        public void handleMessage(Message msg) {
+//            super.handleMessage(msg);
+//            switch (msg.what) {
+//
+//            }
+//        }
+//    };
 
     // If a given GATT characteristic is selected, check for supported features.  This sample
     // demonstrates 'Read' and 'Notify' features.  See

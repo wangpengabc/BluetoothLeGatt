@@ -27,7 +27,17 @@ dependencies {
 
         implementation 'com.github.lecho:hellocharts-library:1.5.8@aar'
 
+        implementation 'commons-net:commons-net:3.8.0'
 
+        // https://mvnrepository.com/artifact/org.apache.commons/commons-lang3
+        implementation 'org.apache.commons:commons-lang3:3.0'
+        // https://mvnrepository.com/artifact/commons-codec/commons-codec
+        implementation 'commons-codec:commons-codec:1.9'
+
+
+
+    // 3. Android - Use Guava in your implementation only:
+//        implementation("com.google.guava:guava:31.1-android")
 
 
 }

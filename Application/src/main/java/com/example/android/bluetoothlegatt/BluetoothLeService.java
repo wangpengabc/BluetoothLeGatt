@@ -32,8 +32,18 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.UUID;
+import java.util.ArrayList;
+import java.lang.Object;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.codec.binary.Hex;
 
 /**
  * Service for managing connection and data communication with a GATT server hosted on a
@@ -119,6 +129,9 @@ public class BluetoothLeService extends Service {
         sendBroadcast(intent);
     }
 
+    private String data_string = "0";
+    private String total_string = "";
+
     private void broadcastUpdate(final String action,
                                  final BluetoothGattCharacteristic characteristic) {
         final Intent intent = new Intent(action);
@@ -143,15 +156,167 @@ public class BluetoothLeService extends Service {
             // For all other profiles, writes the data formatted in HEX.
             final byte[] data = characteristic.getValue();
             if (data != null && data.length > 0) {
-                final StringBuilder stringBuilder = new StringBuilder(data.length);
-                intent.putExtra(EXTRA_DATA, data);
+//                final StringBuilder stringBuilder = new StringBuilder(data.length);
+//                Log.i("data: ", bytes2String(data));
 //                for(byte byteChar : data)
 //                    stringBuilder.append(String.format("%02X ", byteChar));
 //                intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
+
+//                int data_point;
+//                List<Byte> data_list = new ArrayList<Byte>();
+//                int fsm_stage = 0;
+//                int data_len = 0;
+//                int data_cnt = 0;
+//                for (byte tmp : data) {
+//                    Log.i("fsm", "fsm_stage:".concat(String.valueOf(fsm_stage)));
+//                    Log.i("received data:", "received data: ".concat(String.format("%02X ", tmp)));
+//                    switch (fsm_stage) {
+//                        case 0:
+//                            if (Byte.compare(tmp, (byte)0xAA) ==  0) {
+//                                fsm_stage = 1;
+//                            }
+//                            break;
+//
+//                        case 1:
+//                            if (Byte.compare(tmp, (byte)0x55) ==  0) {
+//                                fsm_stage = 2;
+//                            } else {
+//                                fsm_stage = 0;
+//                            }
+//                            break;
+//
+//                        case 2:
+//                            data_len = Byte.toUnsignedInt(tmp);
+////                                data_len = tmp;
+//                            fsm_stage = 3;
+//                            break;
+//
+//                        case 3:
+//                            if (Byte.compare(tmp, (byte)0xA8) == 0) {
+//                                fsm_stage = 4;
+//                            } else {
+//                                fsm_stage = 0;
+//                            }
+//                            break;
+//
+//                        case 4:
+//                            if (data_cnt < data_len) {
+//                                data_cnt++;
+//                                if (data_cnt == data_len) {
+//                                    fsm_stage = 0;
+//                                }
+//                                data_list.add(tmp);
+////                                data_point = Byte.toUnsignedInt(tmp);
+////                                if (drawDataQueue.size() > refreshSize) {
+////                                    drawDataQueue.poll();
+////                                }
+////                                drawDataQueue.add(data_point);
+//                            }
+//                            break;
+//
+//                        default:
+//                            break;
+//                    }
+//                }
+//
+//                Byte[] bytes = data_list.toArray(new Byte[data_list.size()]);
+//
+//                if (data_list.size() != 0) {
+//                    byte[] data_bytes = ArrayUtils.toPrimitive(bytes);
+//                    Log.i("data_bytes: ", bytes2String(data_bytes));
+//                    intent.putExtra(EXTRA_DATA, data_bytes);
+//                }
+
+                // 第三种方法
+                final StringBuilder stringBuilder = new StringBuilder(data.length);
+                String raw_data_string = bytes2String(data);
+                Log.i("data: ", raw_data_string);
+                total_string += raw_data_string;
+                if (total_string.length() > 100) {
+                    if (parseData() == 1) {
+                        try {
+                            byte[] data_bytes = Hex.decodeHex(data_string.toCharArray());
+                            Log.i("data_bytes: ", bytes2String(data_bytes));
+                            intent.putExtra(EXTRA_DATA, data_bytes);
+                        } catch (Exception e) {
+                            byte[] data_bytes = new byte[]{0x00};
+                            intent.putExtra(EXTRA_DATA, data_bytes);
+                            Log.e("decode error", "decode");
+                        }
+                    }
+                }
+
             }
         }
         sendBroadcast(intent);
     }
+
+    /**
+     * 字节数组-->字符串
+     * @param b   字节数组
+     * @return 字符串
+     */
+    public static String bytes2String(byte[] b) {
+        if (null == b || b.length == 0) {
+            return "";
+        }
+        String strContent = "";
+        final StringBuilder stringBuilder = new StringBuilder(b.length);
+        try {
+            strContent = new String(b, "utf-8");
+            for(byte byteChar : b)
+                stringBuilder.append(String.format("%02X", byteChar));
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+//        return strContent;
+        return stringBuilder.toString();
+    }
+
+    public int parseData(){
+        // 正则匹配
+        int end = -1;
+        int start = -1;
+        int data_len = 0;
+        String regex = "AA55\\w{2}A8\\w+";
+        //创建一个模式对象
+        Pattern pattern = Pattern.compile(regex);
+        //匹配字符串
+        Matcher matcher = pattern.matcher(total_string);
+        // 初始化全局变量
+        data_string = "";
+
+        while (matcher.find()) {
+            start = matcher.start();
+            end = matcher.end();
+            String data = matcher.group();
+            data_len = Integer.decode("0x"+data.substring(4,6));
+            if (start+data_len*2+10 > total_string.length() && data_string.equals("")) {
+                total_string = total_string.substring(start, total_string.length());
+                return -1;
+            } else if(start+data_len*2+10 > total_string.length() && data_string.length() > 2) {
+                total_string = total_string.substring(start, total_string.length());
+                return 1;
+            }
+
+            data_string += data.substring(8,8+data_len*2);
+            Log.i("FOUND: ", data_string);
+            Log.i("data Len:", String.valueOf(data_len));
+
+            total_string = total_string.substring(start+data_len*2+10, total_string.length());
+            matcher = pattern.matcher(total_string);
+        }
+
+        if (data_string.equals("")) {
+            total_string = "";
+            return -1;
+        } else {
+            return 1;
+        }
+
+    }
+
+
 
     public class LocalBinder extends Binder {
         BluetoothLeService getService() {
