@@ -29,6 +29,7 @@ import android.content.ServiceConnection;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -38,11 +39,15 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ExpandableListView;
 import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -95,6 +100,15 @@ public class DeviceControlActivity extends Activity {
     private Line ppgLine = null;
     private int refreshSize = 200;
     private Queue<Integer> drawDataQueue = null;
+
+    // button 类控制
+    private Button btnCollect;
+
+    // received data
+    private List<String> recordData = null;
+    private boolean isRecord = false;
+    private String externalFilesDirPath;
+    private String dataSaveName;
 
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -200,6 +214,22 @@ public class DeviceControlActivity extends Activity {
     private final byte[] PPG_BEGIN_CMD = hexStringToByteArray("AA5501100415");
     private final byte[] PPG_STOP_CMD = hexStringToByteArray("AA550211010418");
 
+    @SuppressLint("NonConstantResourceId")
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.btn_collect:
+//                if (btnCollect.getText().toString().equals("开始采集")) {
+//                    btnCollect.setText("停止采集");
+//                    isRecord = true;
+//                }else{
+//                    btnCollect.setText("开始采集");
+//                    isRecord = false;
+//                }
+//                break;
+        }
+    }
+
+
     private final ExpandableListView.OnChildClickListener servicesListClickListner =
             new ExpandableListView.OnChildClickListener() {
                 @Override
@@ -226,6 +256,7 @@ public class DeviceControlActivity extends Activity {
                                 ppg_started = 1;
                                 characteristic.setValue(PPG_BEGIN_CMD);
                                 mBluetoothLeService.writeCharacteristic(characteristic);
+                                recordData = new ArrayList<>();
                             }
                         }
 
@@ -276,12 +307,85 @@ public class DeviceControlActivity extends Activity {
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
         bindService(gattServiceIntent, mServiceConnection, BIND_AUTO_CREATE);
 
+        // find corresponding view
+        btnCollect = findViewById(R.id.btn_collect);
+
         // plot
         ppgChart = findViewById(R.id.chart_ppg);
 
         drawDataQueue = new LinkedList<>();
         for(int i=0; i<refreshSize; i++) drawDataQueue.add(0);
+
+        // data path for saving
+        externalFilesDirPath = this.getExternalFilesDir(null).getAbsolutePath();
     }
+
+    // btn control
+    public void collectControl(View view) {
+        if (btnCollect.getText().toString().equals("开始采集")) {
+            btnCollect.setText("停止采集");
+            recordData = new ArrayList<>();
+            isRecord = true;
+        }else{
+            btnCollect.setText("开始采集");
+            isRecord = false;
+        }
+    }
+
+    public void recordControl(View view) {
+        if(saveData(recordData)){
+            Toast.makeText(DeviceControlActivity.this,"保存成功！", Toast.LENGTH_SHORT).show();
+//                        llChartView.setVisibility(View.INVISIBLE);
+            // 清除用户信息
+//            recordData.clear();
+            drawDataQueue.clear();
+        }
+        else { Toast.makeText(DeviceControlActivity.this,"保存失败！", Toast.LENGTH_SHORT).show(); }
+    }
+
+    public void inferenceControl(View view) {
+        for (String s: recordData){
+
+        }
+        recordData.clear();
+    }
+
+    public boolean saveData(List<String> data) {
+        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) { //sd卡处于挂载状态
+            dataSaveName = "testID" + "_" + "0";
+//            dataSaveName = id + "_" + userInfo.get(0);
+            String fileName = dataSaveName + ".txt";
+            Log.d("externalFilesDirPath", externalFilesDirPath);
+            //获取要写入的文件目录  storage/sdcard/Android/data/包名/files/xxx.txt
+            //创建指定目录下的文件
+            File file = new File(externalFilesDirPath,fileName);
+            //开始写文件
+            if (!file.exists()) {
+                try {
+                    file.createNewFile();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            }
+            // 写入文件
+            try {
+                FileWriter fileWriter=new FileWriter(file);
+                for (String s: data){
+                    fileWriter.write(s);
+                }
+                fileWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+            return true;
+        } else {
+            Toast.makeText(this, "找不到指定的SD卡", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+    }
+
 
     @Override
     protected void onResume() {
@@ -488,43 +592,46 @@ public class DeviceControlActivity extends Activity {
             super.handleMessage(msg);
             switch (msg.what) {
                 case DATA_MSG: //数据消息
-                    byte[] data = (byte []) msg.obj;
-                    // 第三种方法
-                    if (data != null && data.length > 0) {
-                        final StringBuilder stringBuilder = new StringBuilder(data.length);
-                        String raw_data_string = BluetoothLeService.bytes2String(data);
-                        Log.i("data: ", raw_data_string);
-                        total_string += raw_data_string;
-                    }
+                    if(isRecord) {
+                        byte[] data = (byte[]) msg.obj;
+                        // 第三种方法
+                        if (data != null && data.length > 0) {
+                            final StringBuilder stringBuilder = new StringBuilder(data.length);
+                            String raw_data_string = BluetoothLeService.bytes2String(data);
+                            Log.i("data: ", raw_data_string);
+                            total_string += raw_data_string;
+                        }
 
-                    if (total_string.length() > 100) {
-                        if (parseData() == 1) {
-                            try {
-                                byte[] data_tmp = Hex.decodeHex(data_string.toCharArray());
-                                Log.i("data_bytes: ", BluetoothLeService.bytes2String(data_tmp));
+                        if (total_string.length() > 100) {
+                            if (parseData() == 1) {
+                                try {
+                                    Collections.addAll(recordData, data_string);
+                                    byte[] data_tmp = Hex.decodeHex(data_string.toCharArray());
+                                    Log.i("data_bytes: ", BluetoothLeService.bytes2String(data_tmp));
 
-                                int data_point=0;
-                                if (data_tmp != null) {
-                                    new_point_cnt += data_tmp.length;
-                                    for (byte tmp : data_tmp) {
-                                        data_point = Byte.toUnsignedInt(tmp);
-                                        if (drawDataQueue.size() > refreshSize) {
-                                            drawDataQueue.poll();
+                                    int data_point = 0;
+                                    if (data_tmp != null) {
+                                        new_point_cnt += data_tmp.length;
+                                        for (byte tmp : data_tmp) {
+                                            data_point = Byte.toUnsignedInt(tmp);
+                                            if (drawDataQueue.size() > refreshSize) {
+                                                drawDataQueue.poll();
+                                            }
+                                            drawDataQueue.add(data_point);
                                         }
-                                        drawDataQueue.add(data_point);
                                     }
-                                }
 
-                                // 调用画图函数
-                                // 产生线条 - 绘图
-                                if (drawDataQueue != null) {
-                                    Log.i("Queue is not empty", "Queue is not empty");
-                                    generateLine(drawDataQueue);
-                                    drawChart(ppgChart, "PPG");
+                                    // 调用画图函数
+                                    // 产生线条 - 绘图
+                                    if (drawDataQueue != null) {
+                                        Log.i("Queue is not empty", "Queue is not empty");
+                                        generateLine(drawDataQueue);
+                                        drawChart(ppgChart, "PPG");
+                                    }
+                                } catch (Exception e) {
+                                    byte[] data_bytes = new byte[]{0x00};
+                                    Log.e("decode error", "decode");
                                 }
-                            } catch (Exception e) {
-                                byte[] data_bytes = new byte[]{0x00};
-                                Log.e("decode error", "decode");
                             }
                         }
                     }
@@ -575,6 +682,7 @@ public class DeviceControlActivity extends Activity {
         }
 
     }
+
 
 }
 

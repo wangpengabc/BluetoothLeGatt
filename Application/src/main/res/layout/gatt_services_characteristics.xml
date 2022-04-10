@@ -67,6 +67,29 @@
                   android:textSize="18sp"/>
     </LinearLayout>
 
+
+
+    <Button
+        android:id="@+id/btn_collect"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="collectControl"
+        android:text="@string/btn_collect_on" />
+
+    <Button
+        android:id="@+id/btn_record"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="recordControl"
+        android:text="@string/btn_record" />
+
+    <Button
+        android:id="@+id/btn_inference"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="inferenceControl"
+        android:text="@string/btn_inference" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -84,7 +107,20 @@
 
     </LinearLayout>
 
-    <ExpandableListView android:id="@+id/gatt_services_list"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+    <ExpandableListView
+        android:id="@+id/gatt_services_list"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/button2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Button" />
+
+    <Button
+        android:id="@+id/button3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Button" />
 </LinearLayout>

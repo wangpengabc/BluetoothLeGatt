@@ -23,6 +23,10 @@
     <string name="disconnected">Disconnected</string>
     <string name="title_devices">BLE Device Scan</string>
     <string name="error_bluetooth_not_supported">Bluetooth not supported.</string>
+    <string name="btn_collect_on">开始采集</string>
+    <string name="btn_collect_off">结束采集</string>
+    <string name="btn_record">保存数据</string>
+    <string name="btn_inference">运行诊断</string>
 
     <string name="unknown_device">Unknown device</string>
     <string name="unknown_characteristic">Unknown characteristic</string>
