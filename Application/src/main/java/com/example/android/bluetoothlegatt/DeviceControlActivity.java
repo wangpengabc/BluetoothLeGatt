@@ -530,5 +530,55 @@ public class DeviceControlActivity extends Activity {
         chart.setLineChartData(data);  //给图表设置数据
         chart.setBackgroundColor(Color.parseColor("#FFFAF0"));
     }
+
+    // Animators may only be run on Looper threads
+    // 所以要这么传
+    @SuppressLint("HandlerLeak")
+    private Handler mHandler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            switch (msg.what) {
+                case DATA_MSG: //数据消息
+                    if(isRecord){
+                        String sendData = (String) msg.obj;
+                        String[] data = sendData.split("\n");
+                        // 可以把recordData变成string直接加长吗
+                        Collections.addAll(recordData,data);
+                        String[] value = data[0].split(",");
+                        tvBCG.setText("BCG:"+value[0]);
+                        tvECG.setText("ECG:"+value[1]);
+                        rcvCount = (rcvCount % 65535) + data.length;
+                        tvCNT.setText("计数：" + rcvCount);
+
+                        for(String tmp:data){
+                            if(drawDataQueue.size()>refreshSize){drawDataQueue.poll();}
+                            drawDataQueue.add(tmp);
+                        }
+                        // 调用画图函数
+                        // 产生线条 - 绘图
+                        generateLine(drawDataQueue);
+                        drawChart(bcgChart, "BCG");
+                        drawChart(ecgChart, "ECG");
+                    }
+                    break;
+                case STATE_MSG: //连接状态消息
+                    String sendState = (String) msg.obj;
+                    if(sendState.equals("SUCCESS")){
+                        deviceState.setText("连接状态：连接成功");
+                        llBtInfo.setVisibility(View.VISIBLE);
+                        btnConnect.setEnabled(false);
+                        btnCollect.setEnabled(true);
+                    }else {
+                        deviceState.setText("连接状态：连接失败");
+                        llBtInfo.setVisibility(View.VISIBLE);
+                        btnConnect.setEnabled(true);
+                        btnCollect.setEnabled(false);
+                    }
+                    break;
+            }
+        }
+    };
+
 }
 

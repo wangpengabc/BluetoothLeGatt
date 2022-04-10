@@ -232,7 +232,7 @@ public class BluetoothLeService extends Service {
                 String raw_data_string = bytes2String(data);
                 Log.i("data: ", raw_data_string);
                 total_string += raw_data_string;
-                if (total_string.length() > 100) {
+                if (total_string.length() > 150) {
                     if (parseData() == 1) {
                         try {
                             byte[] data_bytes = Hex.decodeHex(data_string.toCharArray());
