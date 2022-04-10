@@ -50,6 +50,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import lecho.lib.hellocharts.gesture.ZoomType;
 import lecho.lib.hellocharts.model.Axis;
@@ -57,6 +59,9 @@ import lecho.lib.hellocharts.model.Line;
 import lecho.lib.hellocharts.model.LineChartData;
 import lecho.lib.hellocharts.model.PointValue;
 import lecho.lib.hellocharts.view.LineChartView;
+
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.codec.binary.Hex;
 
 /**
  * For a given BLE device, this Activity provides the user interface to connect, display data,
@@ -85,6 +90,7 @@ public class DeviceControlActivity extends Activity {
     private final String LIST_UUID = "UUID";
 
     // 信号绘制部分变量
+    private static final int DATA_MSG = 0x01;
     private LineChartView ppgChart = null;
     private Line ppgLine = null;
     private int refreshSize = 200;
@@ -138,96 +144,42 @@ public class DeviceControlActivity extends Activity {
 //                displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
 
                 byte[] data_tmp = intent.getByteArrayExtra(BluetoothLeService.EXTRA_DATA);
-                int data_point=0;
-//                int fsm_stage = 0;
-//                int data_len = 0;
-//                int data_cnt = 0;
-                if (data_tmp != null) {
-//                    StringBuilder stringBuilder = new StringBuilder(data_tmp.length);
-//                    for(byte byteChar : data_tmp)
-//                        stringBuilder.append(String.format("%02X ", byteChar));
-//                    Log.i( "received data: ", stringBuilder.toString());
+                Message msg = new Message();
+                msg.what = DATA_MSG;
+                msg.obj = data_tmp;
+                mHandler.sendMessage(msg);
 
-                    new_point_cnt += data_tmp.length;
-                    for (byte tmp : data_tmp) {
-////                        Log.i("fsm", "fsm_stage:".concat(String.valueOf(fsm_stage)));
-//                        Log.i("fsm", "fsm_stage:".concat(String.valueOf(fsm_stage)));
-//                        Log.i("received data:", "received data: ".concat(String.format("%02X ", tmp)));
-//                        switch (fsm_stage) {
-//                            case 0:
-//                                if (Byte.compare(tmp, (byte)0xAA) ==  0) {
-//                                    fsm_stage = 1;
-//                                }
-//                                break;
+//                int data_point=0;
+//                if (data_tmp != null) {
+////                    StringBuilder stringBuilder = new StringBuilder(data_tmp.length);
+////                    for(byte byteChar : data_tmp)
+////                        stringBuilder.append(String.format("%02X ", byteChar));
+////                    Log.i( "received data: ", stringBuilder.toString());
 //
-//                            case 1:
-//                                if (Byte.compare(tmp, (byte)0x55) ==  0) {
-//                                    fsm_stage = 2;
-//                                } else {
-//                                    fsm_stage = 0;
-//                                }
-//                                break;
-//
-//                            case 2:
-//                            data_len = Byte.toUnsignedInt(tmp);
-////                                data_len = tmp;
-//                                fsm_stage = 3;
-//                                break;
-//
-//                            case 3:
-//                                if (Byte.compare(tmp, (byte)0xA8) == 0) {
-//                                    fsm_stage = 4;
-//                                } else {
-//                                    fsm_stage = 0;
-//                                }
-//                                break;
-//
-//                            case 4:
-//                                if (data_cnt < data_len) {
-//                                    data_cnt++;
-//                                    if (data_cnt == data_len) {
-//                                        fsm_stage = 0;
-//                                    }
-                                data_point = Byte.toUnsignedInt(tmp);
-////                                    data_point = tmp;
-                                    if (drawDataQueue.size() > refreshSize) {
-                                        drawDataQueue.poll();
-                                    }
-                                    drawDataQueue.add(data_point);
-//                                }
-//                                break;
-//
-//                            default:
-//                                break;
+//                    new_point_cnt += data_tmp.length;
+//                    for (byte tmp : data_tmp) {
+//                        data_point = Byte.toUnsignedInt(tmp);
+//                        if (drawDataQueue.size() > refreshSize) {
+//                            drawDataQueue.poll();
 //                        }
-                    }
-                }
-
-                // 调用画图函数
-                // 产生线条 - 绘图
-                if (drawDataQueue != null) {
-//                    if (new_point_cnt > 25) {
-//                        new_point_cnt = 0;
-                        Log.i("Queue is not empty", "Queue is not empty");
-                        generateLine(drawDataQueue);
-                        drawChart(ppgChart, "PPG");
+//                        drawDataQueue.add(data_point);
 //                    }
-                }
+//                }
+//
+//                // 调用画图函数
+//                // 产生线条 - 绘图
+//                if (drawDataQueue != null) {
+////                    if (new_point_cnt > 25) {
+////                        new_point_cnt = 0;
+//                        Log.i("Queue is not empty", "Queue is not empty");
+//                        generateLine(drawDataQueue);
+//                        drawChart(ppgChart, "PPG");
+////                    }
+//                }
             }
         }
     };
 
-//    // 所以要这么传
-//    @SuppressLint("HandlerLeak")
-//    private Handler mHandler = new Handler(Looper.getMainLooper()) {
-//        @Override
-//        public void handleMessage(Message msg) {
-//            super.handleMessage(msg);
-//            switch (msg.what) {
-//
-//            }
-//        }
-//    };
 
     // If a given GATT characteristic is selected, check for supported features.  This sample
     // demonstrates 'Read' and 'Notify' features.  See
@@ -475,13 +427,6 @@ public class DeviceControlActivity extends Activity {
             ppgPoints.add(new PointValue(idx, data0));
             idx++;
         }
-//        for (String str: queue) {
-//            String[] split_data = str.split(",");
-//            int data0 = Integer.parseInt(split_data[0]);
-//            int data1 = Integer.parseInt(split_data[1]);
-//            ppgPoints.add(new PointValue(idx, data0));
-//            idx++;
-//        }
 
         // 根据创建的 点 创建 线条， 并设置线条的外观
         ppgLine = new Line(ppgPoints);
@@ -533,6 +478,9 @@ public class DeviceControlActivity extends Activity {
 
     // Animators may only be run on Looper threads
     // 所以要这么传
+    private String data_string = "0";
+    private String total_string = "";
+
     @SuppressLint("HandlerLeak")
     private Handler mHandler = new Handler(Looper.getMainLooper()) {
         @Override
@@ -540,45 +488,93 @@ public class DeviceControlActivity extends Activity {
             super.handleMessage(msg);
             switch (msg.what) {
                 case DATA_MSG: //数据消息
-                    if(isRecord){
-                        String sendData = (String) msg.obj;
-                        String[] data = sendData.split("\n");
-                        // 可以把recordData变成string直接加长吗
-                        Collections.addAll(recordData,data);
-                        String[] value = data[0].split(",");
-                        tvBCG.setText("BCG:"+value[0]);
-                        tvECG.setText("ECG:"+value[1]);
-                        rcvCount = (rcvCount % 65535) + data.length;
-                        tvCNT.setText("计数：" + rcvCount);
+                    byte[] data = (byte []) msg.obj;
+                    // 第三种方法
+                    if (data != null && data.length > 0) {
+                        final StringBuilder stringBuilder = new StringBuilder(data.length);
+                        String raw_data_string = BluetoothLeService.bytes2String(data);
+                        Log.i("data: ", raw_data_string);
+                        total_string += raw_data_string;
+                    }
 
-                        for(String tmp:data){
-                            if(drawDataQueue.size()>refreshSize){drawDataQueue.poll();}
-                            drawDataQueue.add(tmp);
+                    if (total_string.length() > 100) {
+                        if (parseData() == 1) {
+                            try {
+                                byte[] data_tmp = Hex.decodeHex(data_string.toCharArray());
+                                Log.i("data_bytes: ", BluetoothLeService.bytes2String(data_tmp));
+
+                                int data_point=0;
+                                if (data_tmp != null) {
+                                    new_point_cnt += data_tmp.length;
+                                    for (byte tmp : data_tmp) {
+                                        data_point = Byte.toUnsignedInt(tmp);
+                                        if (drawDataQueue.size() > refreshSize) {
+                                            drawDataQueue.poll();
+                                        }
+                                        drawDataQueue.add(data_point);
+                                    }
+                                }
+
+                                // 调用画图函数
+                                // 产生线条 - 绘图
+                                if (drawDataQueue != null) {
+                                    Log.i("Queue is not empty", "Queue is not empty");
+                                    generateLine(drawDataQueue);
+                                    drawChart(ppgChart, "PPG");
+                                }
+                            } catch (Exception e) {
+                                byte[] data_bytes = new byte[]{0x00};
+                                Log.e("decode error", "decode");
+                            }
                         }
-                        // 调用画图函数
-                        // 产生线条 - 绘图
-                        generateLine(drawDataQueue);
-                        drawChart(bcgChart, "BCG");
-                        drawChart(ecgChart, "ECG");
                     }
-                    break;
-                case STATE_MSG: //连接状态消息
-                    String sendState = (String) msg.obj;
-                    if(sendState.equals("SUCCESS")){
-                        deviceState.setText("连接状态：连接成功");
-                        llBtInfo.setVisibility(View.VISIBLE);
-                        btnConnect.setEnabled(false);
-                        btnCollect.setEnabled(true);
-                    }else {
-                        deviceState.setText("连接状态：连接失败");
-                        llBtInfo.setVisibility(View.VISIBLE);
-                        btnConnect.setEnabled(true);
-                        btnCollect.setEnabled(false);
-                    }
-                    break;
+                break;
             }
         }
     };
+
+    public int parseData(){
+        // 正则匹配
+        int end = -1;
+        int start = -1;
+        int data_len = 0;
+        String regex = "AA55\\w{2}A8\\w+";
+        //创建一个模式对象
+        Pattern pattern = Pattern.compile(regex);
+        //匹配字符串
+        Matcher matcher = pattern.matcher(total_string);
+        // 初始化全局变量
+        data_string = "";
+
+        while (matcher.find()) {
+            start = matcher.start();
+            end = matcher.end();
+            String data = matcher.group();
+            data_len = Integer.decode("0x"+data.substring(4,6));
+            if (start+data_len*2+10 > total_string.length() && data_string.equals("")) {
+                total_string = total_string.substring(start, total_string.length());
+                return -1;
+            } else if(start+data_len*2+10 > total_string.length() && data_string.length() > 2) {
+                total_string = total_string.substring(start, total_string.length());
+                return 1;
+            }
+
+            data_string += data.substring(8,8+data_len*2);
+            Log.i("FOUND: ", data_string);
+            Log.i("data Len:", String.valueOf(data_len));
+
+            total_string = total_string.substring(start+data_len*2+10, total_string.length());
+            matcher = pattern.matcher(total_string);
+        }
+
+        if (data_string.equals("")) {
+            total_string = "";
+            return -1;
+        } else {
+            return 1;
+        }
+
+    }
 
 }
 
