@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--自用-->
+    <color name="orange">#FD8736</color>
+    <color name="apricot">#F7B77D</color>
+    <color name="salmon_pink">#F88274</color>
+    <color name="floral_white">#FFFAF0</color>
+    <color name="papaya_whip">#FFEFD5</color>
+    <color name="dark_grey">#323232</color>
+    <color name="orange_red">#D54C4C</color>
+    <color name="gold">#FECB2F</color>
+    <color name="grey">#CCCCCC</color>
+</resources>

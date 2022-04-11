@@ -34,27 +34,33 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
-import android.support.annotation.RequiresApi;
+import androidx.annotation.RequiresApi;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ExpandableListView;
+import android.widget.LinearLayout;
 import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.android.bluetoothlegatt.predict.HRHRVStressArrhy;
+import com.example.android.bluetoothlegatt.predict.QRSDetectorOffline;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
-import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -65,7 +71,6 @@ import lecho.lib.hellocharts.model.LineChartData;
 import lecho.lib.hellocharts.model.PointValue;
 import lecho.lib.hellocharts.view.LineChartView;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.codec.binary.Hex;
 
 /**
@@ -103,12 +108,36 @@ public class DeviceControlActivity extends Activity {
 
     // button 类控制
     private Button btnCollect;
+    private Button btnRecord;
+    private Button btnInference;
 
     // received data
     private List<String> recordData = null;
     private boolean isRecord = false;
     private String externalFilesDirPath;
     private String dataSaveName;
+    // used for calcaulting sampling freqency
+    private long startTime = System.currentTimeMillis(); //起始时间
+    private long endTime = System.currentTimeMillis(); //结束时间
+    private long runTime = 0;
+
+    // HRV指标
+    private LinearLayout llCollecting;
+    private LinearLayout llHRV;
+    private TextView hrvPNN50;
+    private TextView hrvRMSSD;
+    private TextView hrvSDNN;
+    private TextView hrvMEAN;
+    private TextView hrvSD1;
+    private TextView hrvSD2;
+    private TextView hrvSDSD;
+    private TextView hrvSD1SD2;
+    private TextView hrvLF;
+    private TextView hrvHF;
+    private TextView hrvBAEVSKY;
+    private TextView hrvNN50;
+    private TextView hrvStress;
+    private TextView hrvArrhy;
 
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -162,34 +191,6 @@ public class DeviceControlActivity extends Activity {
                 msg.what = DATA_MSG;
                 msg.obj = data_tmp;
                 mHandler.sendMessage(msg);
-
-//                int data_point=0;
-//                if (data_tmp != null) {
-////                    StringBuilder stringBuilder = new StringBuilder(data_tmp.length);
-////                    for(byte byteChar : data_tmp)
-////                        stringBuilder.append(String.format("%02X ", byteChar));
-////                    Log.i( "received data: ", stringBuilder.toString());
-//
-//                    new_point_cnt += data_tmp.length;
-//                    for (byte tmp : data_tmp) {
-//                        data_point = Byte.toUnsignedInt(tmp);
-//                        if (drawDataQueue.size() > refreshSize) {
-//                            drawDataQueue.poll();
-//                        }
-//                        drawDataQueue.add(data_point);
-//                    }
-//                }
-//
-//                // 调用画图函数
-//                // 产生线条 - 绘图
-//                if (drawDataQueue != null) {
-////                    if (new_point_cnt > 25) {
-////                        new_point_cnt = 0;
-//                        Log.i("Queue is not empty", "Queue is not empty");
-//                        generateLine(drawDataQueue);
-//                        drawChart(ppgChart, "PPG");
-////                    }
-//                }
             }
         }
     };
@@ -309,6 +310,26 @@ public class DeviceControlActivity extends Activity {
 
         // find corresponding view
         btnCollect = findViewById(R.id.btn_collect);
+        btnRecord = findViewById(R.id.btn_record);
+        btnInference = findViewById(R.id.btn_inference);
+
+        // HRV指标
+        llCollecting = findViewById(R.id.ll_collecting);
+        llHRV = findViewById(R.id.ll_hrv);
+        hrvPNN50 = findViewById(R.id.hrv_pnn50);
+        hrvRMSSD = findViewById(R.id.hrv_rmssd);
+        hrvSDNN = findViewById(R.id.hrv_sdnn);
+        hrvMEAN = findViewById(R.id.hrv_mean);
+        hrvSD1 = findViewById(R.id.hrv_sd1);
+        hrvSD2 = findViewById(R.id.hrv_sd2);
+        hrvSDSD = findViewById(R.id.hrv_sdsd);
+        hrvSD1SD2 = findViewById(R.id.hrv_sd1sd2);
+        hrvLF = findViewById(R.id.hrv_lf);
+        hrvHF = findViewById(R.id.hrv_hf);
+        hrvBAEVSKY = findViewById(R.id.hrv_baevsky);
+        hrvNN50 = findViewById(R.id.hrv_nn50);
+        hrvStress = findViewById(R.id.hrv_stress);
+        hrvArrhy = findViewById(R.id.hrv_arrhy);
 
         // plot
         ppgChart = findViewById(R.id.chart_ppg);
@@ -326,9 +347,41 @@ public class DeviceControlActivity extends Activity {
             btnCollect.setText("停止采集");
             recordData = new ArrayList<>();
             isRecord = true;
+            startTime = System.currentTimeMillis(); //起始时间
+
+            // UI 控制
+            llCollecting.setVisibility(View.VISIBLE);
+            llHRV.setVisibility(View.GONE);
+            btnRecord.setVisibility(View.VISIBLE);
+            btnInference.setVisibility(View.VISIBLE);
+
         }else{
+            // 计算采样率
+            endTime = System.currentTimeMillis(); //结束时间
+            runTime = endTime - startTime;
+            int total_len = 0;
+            for (String s: recordData) {
+                Log.d("s:", s);
+                int s_len = s.length() / 2;
+                total_len += s_len;
+            }
+            if (total_len != 0 && runTime != 0) {
+                float fs = (float) runTime / (float) total_len;
+                fs = 1000 / fs;
+                Log.d("fs", String.valueOf(fs));
+                Log.d("runTime", String.valueOf(runTime));
+                Log.d("total_len", String.valueOf(total_len));
+                Toast.makeText(DeviceControlActivity.this, String.valueOf(fs), Toast.LENGTH_SHORT).show();
+            }
+
+            // 相关UI和控制变量
             btnCollect.setText("开始采集");
             isRecord = false;
+            // UI 控制
+            llCollecting.setVisibility(View.VISIBLE);
+            llHRV.setVisibility(View.GONE);
+            btnRecord.setVisibility(View.VISIBLE);
+            btnInference.setVisibility(View.VISIBLE);
         }
     }
 
@@ -344,15 +397,63 @@ public class DeviceControlActivity extends Activity {
     }
 
     public void inferenceControl(View view) {
-        for (String s: recordData){
-
+//        int data_point = 0;
+//        String data_point_str;
+//        List<Integer> points = new ArrayList<Integer>();
+//        for (String s: recordData){
+//            int s_len = s.length() / 2;
+//            for (int i=0; i<s_len; i++) {
+//                data_point = Integer.parseInt(s.substring(i*2, (i+1)*2), 16);
+//                points.add(data_point);
+//            }
+//        }
+        // detect peak of PPG and calculate HRV
+        try {
+            int lines = QRSDetectorOffline.detectQRS(externalFilesDirPath, dataSaveName);
+            if (lines < 10) {
+                Toast.makeText(this, "采集时间过短", Toast.LENGTH_SHORT);
+            } else {
+                // UI 控制
+                llCollecting.setVisibility(View.GONE);
+                llHRV.setVisibility(View.VISIBLE);
+                btnRecord.setVisibility(View.GONE);
+                btnInference.setVisibility(View.GONE);
+                String parameters_save_name = externalFilesDirPath + "/" + dataSaveName + "_paramters.properties";
+                try {
+                    Map<String, Double> parameters_map = HRHRVStressArrhy.loadFromFile(parameters_save_name);
+                    hrvPNN50.setText("PNN50：" + String.format("%.2f", parameters_map.get("PNN50")));
+                    hrvRMSSD.setText("RMSSD：" + String.format("%.2f", parameters_map.get("RMSSD")));
+                    hrvSDNN.setText("SDNN：" + String.format("%.2f", parameters_map.get("SDNN")));
+                    hrvMEAN.setText("MEAN：" + String.format("%.2f", parameters_map.get("MEAN")));
+                    hrvSD1.setText("SD1：" + String.format("%.2f", parameters_map.get("SD1")));
+                    hrvSD2.setText("SD2：" + String.format("%.2f", parameters_map.get("SD2")));
+                    hrvSDSD.setText("SDSD：" + String.format("%.2f", parameters_map.get("SDSD")));
+                    hrvSD1SD2.setText("SD1SD2：" + String.format("%.2f", parameters_map.get("SD1SD2")));
+                    hrvLF.setText("LF：" + String.format("%.2f", parameters_map.get("LF")));
+                    hrvHF.setText("HF：" + String.format("%.2f", parameters_map.get("HF")));
+                    hrvBAEVSKY.setText("BAEVSKY：" + String.format("%.2f", parameters_map.get("BAEVSKY")));
+                    hrvNN50.setText("NN50：" + String.format("%.2f", parameters_map.get("NN50")));
+                    hrvStress.setText("Stress：" + String.format("%.2f", parameters_map.get("Stress")));
+                    hrvArrhy.setText("Arrhy：" + String.format("%.2f", parameters_map.get("arrhy")));
+                }catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        } finally {
+            Toast.makeText(this, "采集时间过短", Toast.LENGTH_SHORT);
         }
+
+//        // 切换到结果显示界面
+//        Intent intent = new Intent(this, ResultActivity.class);
+//        startActivity(intent);
+
         recordData.clear();
     }
 
     public boolean saveData(List<String> data) {
         if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) { //sd卡处于挂载状态
-            dataSaveName = "testID" + "_" + "0";
+            String fileName_time = new SimpleDateFormat("yyyyMMddHHmm").format(new Date());
+            dataSaveName = "testID" + "_" + fileName_time;
 //            dataSaveName = id + "_" + userInfo.get(0);
             String fileName = dataSaveName + ".txt";
             Log.d("externalFilesDirPath", externalFilesDirPath);
@@ -371,8 +472,22 @@ public class DeviceControlActivity extends Activity {
             // 写入文件
             try {
                 FileWriter fileWriter=new FileWriter(file);
+//                for (String s: data){
+//                    fileWriter.write(s);
+//                }
+                int data_point = 0;
+                String data_point_str;
+//                fileWriter.write("ppg,empty\n");
                 for (String s: data){
-                    fileWriter.write(s);
+                    Log.d("s:", s);
+                    int s_len = s.length() / 2;
+                    for (int i=0; i<s_len; i++) {
+                        Log.d("s:", s.substring(i*2, (i+1)*2));
+                        data_point = Integer.parseInt(s.substring(i*2, (i+1)*2), 16);
+                        data_point_str = String.valueOf(data_point);
+                        fileWriter.write(data_point_str);
+                        fileWriter.write(",0\n");
+                    }
                 }
                 fileWriter.close();
             } catch (IOException e) {

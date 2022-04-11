@@ -4,7 +4,9 @@
     <option name="filePathToZoomLevelMap">
       <map>
         <entry key="../../../../../../layout/custom_preview.xml" value="0.21302083333333333" />
+        <entry key="Application/src/main/res/drawable-mdpi/dotted_box.xml" value="0.193" />
         <entry key="Application/src/main/res/layout/actionbar_indeterminate_progress.xml" value="0.18489583333333334" />
+        <entry key="Application/src/main/res/layout/activity_result.xml" value="0.18489583333333334" />
         <entry key="Application/src/main/res/layout/gatt_services_characteristics.xml" value="0.18489583333333334" />
         <entry key="Application/src/main/res/layout/listitem_device.xml" value="0.18489583333333334" />
         <entry key="Application/src/main/res/menu/gatt_services.xml" value="0.18489583333333334" />
