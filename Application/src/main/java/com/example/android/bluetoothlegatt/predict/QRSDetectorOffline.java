@@ -69,15 +69,6 @@ public class QRSDetectorOffline{
         System.out.println("detected_peaks_indices.size:");
         System.out.println(detected_peaks_indices.length);
 
-        // test arrayList Usage
-        // List<Integer> peaks_indices_list = new ArrayList<Integer>(3);
-        // peaks_indices_list.add(1);
-        // peaks_indices_list.add(1);
-        // peaks_indices_list.add(1);
-        // peaks_indices_list.set(0, Integer.valueOf(9));
-        // System.out.println(peaks_indices_list.size());
-        // System.out.println(peaks_indices_list.get(0));
-
         int[] peaks_indices_new = adjust_peak(ecg, detected_peaks_indices);
         System.out.println("peaks_indices_new.size:");
         System.out.println(peaks_indices_new.length);
@@ -128,7 +119,8 @@ public class QRSDetectorOffline{
         }
 
         // 把以signal_frequency 频率表示的RR间期  转换为 360Hz的RR间期
-        float rr_scale_ration = ((float) 360) / (float)signal_frequency;
+        int new_sample_rate = 360;
+        float rr_scale_ration = ((float) new_sample_rate) / (float)signal_frequency;
         for(int i = 0; i < end-start+1; i++){
             for(int j = 0; j < 3; j++) {
                 rr[i][j] = (int)(rr_scale_ration * rr[i][j]);
@@ -136,14 +128,34 @@ public class QRSDetectorOffline{
         }
         Log.d("rr_list", Arrays.deepToString(rr));
 
+        // Normalization
+        for (int dimension = 0; dimension < sigFrag.length; ++dimension) {
+            double min = sigFrag[dimension][0];
+            double max = sigFrag[dimension][0];
+
+            for (int i = 0; i < sigFrag[dimension].length; ++i) {
+                if (sigFrag[dimension][i] > max) {
+                    max = sigFrag[dimension][i];
+                }
+                if (sigFrag[dimension][i] < min) {
+                    min = sigFrag[dimension][i];
+                }
+            }
+
+            for (int i = 0; i < sigFrag[dimension].length; ++i) {
+                sigFrag[dimension][i] = (sigFrag[dimension][i] - min) / (max - min);
+            }
+        }
+
         boolean flag1 = writeToFile(data_save_dir + "/" + ecg_data_name + "_src.csv", sigFrag);
         boolean flag2 = writeToFile(data_save_dir + "/" + ecg_data_name + "_rr.csv", rr);
+        boolean flag3 = writeToFileOneDim(data_save_dir + "/" + ecg_data_name + "_rrp.csv", peaks_indices_new);     // R points' position
 
         // calculate the hrv (heart rate variability) and save to $(ecg_data_name).properties file
         // convert rr_list to unit of second
         double[] rr_list = new double[end-start+1];
         for(int i = 0; i < end-start+1; i++){
-            rr_list[i] = rr[i][0] / (double)360;
+            rr_list[i] = rr[i][0] / (double)new_sample_rate;
         }
 
         // 如果检测到的R波过少，那么产生随机RR序列 / 直接返回
@@ -161,8 +173,6 @@ public class QRSDetectorOffline{
         Log.d("end", String.valueOf(end));
         Log.d("start", String.valueOf(start));
 
-//        rr_list[end-start+1] = rr[end-start+1][1];
-
         try {
             List<HRVParameter> result = HRHRVStressArrhy.calcParames(rr_list, data_save_dir, ecg_data_name);
         }catch (IOException e) {
@@ -171,21 +181,6 @@ public class QRSDetectorOffline{
 
         if(flag1&&flag2){return (end-start+1);}
         else {return -1;}
-
-//        // output peaks_indices_new to csv file
-//        try {
-//            FileWriter fw = new FileWriter( data_save_dir + "/" + ecg_data_name + "_QRS.csv",true);
-//            BufferedWriter bw = new BufferedWriter(fw);
-//
-//            for (int i = 0; i < peaks_indices_new.length; i++) {
-//                bw.write(String.valueOf(peaks_indices_new[i]) );
-//                bw.newLine();
-//            }
-//            bw.close();
-//        }catch (IOException e) {
-//            e.printStackTrace();
-//        }
-
     }
 
     public static double[] upsample(double[] ecg_slice){
@@ -387,41 +382,21 @@ public class QRSDetectorOffline{
 
     }
 
-//    // load
-//    public static ArrayList<String> load_ecg_data(String filepath){
-//        ArrayList<String> dataAL = new ArrayList<String>();
-//
-//        BufferedReader reader;
-//        try {
-//            reader = new BufferedReader(new FileReader(filepath));
-//            //reader.readLine();//
-//            String line = null;//
-//
-//            int line_num = 0;
-//            while ((line = reader.readLine()) != null) {
-//
-//                if(line_num > 0){
-//                    String item[] = line.split("\t");
-//                    dataAL.add(item[1]);
-//                }
-//                //System.out.println(dataAL.get(line_num));
-//                line_num++;
-//
-//            }
-//            //System.out.println(dataAL.size());
-//            //System.out.print(ticketStr.toString());
-//
-//        } catch (FileNotFoundException e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        } catch (IOException e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        }
-//
-//        return dataAL;
-//
-//    }
+    public static boolean writeToFileOneDim(String filename, int[] Array){
+        try {
+            FileWriter fileWriter = new FileWriter(filename);
+            for(int value:Array){
+
+                fileWriter.write(value + ",");
+                fileWriter.write("\n");
+            }
+            fileWriter.close();
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 
     public static boolean writeToFile(String filename, int[][] Array){
         try {

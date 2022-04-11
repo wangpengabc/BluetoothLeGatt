@@ -52,16 +52,6 @@ public class HRVCalculatorFacade {
         return new HRVParameter(HRVParameterEnum.HF, calcHF.process(getPowerSpectrum()).getValue() * 1000000, "ms * ms");
     }
 
-//    public HRVParameter getLF() {
-//        PowerSpectrumIntegralCalculatorWelch calcLF = new PowerSpectrumIntegralCalculatorWelch(lfLowerBound, lfUpperBound);
-//        return new HRVParameter(HRVParameterEnum.LF, calcLF.process(getPowerSpectrumWelch()).getValue(), "ms * ms");
-//    }
-//
-//    public HRVParameter getHF() {
-//        PowerSpectrumIntegralCalculatorWelch calcHF = new PowerSpectrumIntegralCalculatorWelch(hfLowerBound, hfUpperBound);
-//        return new HRVParameter(HRVParameterEnum.HF, calcHF.process(getPowerSpectrumWelch()).getValue(), "ms * ms");
-//    }
-
     public HRVParameter getMean() {
         Mean m = new Mean();
         return new HRVParameter(HRVParameterEnum.MEAN, m.evaluate(data.getValueAxis()), data.getValueAxisUnit().toString());
@@ -122,23 +112,6 @@ public class HRVCalculatorFacade {
             RRData manipulatedData = mani.manipulate(data);
 
             StandardPowerSpectralDensityEstimator estimator = new StandardPowerSpectralDensityEstimator();
-            this.ps = estimator.calculateEstimate(manipulatedData);
-        }
-
-        return ps;
-    }
-
-    public PowerSpectrum getPowerSpectrumWelch() {
-        if(this.ps == null) {
-            HRVMultiDataManipulator mani = new HRVMultiDataManipulator();
-            mani.addManipulator(new HRVCleanRRDataByLimits());
-//            mani.addManipulator(new HRVSplineInterpolator(4));
-            mani.addManipulator(new HRVLinearInterpolator(4));
-//            mani.addManipulator(new HRVCutToPowerTwoDataManipulator());
-            mani.addManipulator(new HRVSubstractMeanManipulator());
-            RRData manipulatedData = mani.manipulate(data);
-
-            WelchPowerSpectralDensityEstimator estimator = new WelchPowerSpectralDensityEstimator();
             this.ps = estimator.calculateEstimate(manipulatedData);
         }
 

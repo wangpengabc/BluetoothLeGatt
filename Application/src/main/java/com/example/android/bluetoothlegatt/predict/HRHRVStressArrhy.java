@@ -1,35 +1,24 @@
 package com.example.android.bluetoothlegatt.predict;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
+import android.util.Log;
+
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.io.*;
 
-import hrv.HRVLibFacade;
-import hrv.RRData;
 import hrv.calc.parameter.HRVParameter;
 import hrv.calc.parameter.HRVParameterEnum;
 import units.TimeUnit;
+import hrv.RRData;
+import hrv.HRVLibFacade;
 
 
 public class HRHRVStressArrhy {
+    private static final String TAG = "HRHRVStressArrhy";
     public HRHRVStressArrhy() { }
-
     /*
      * calculate parameters and save to $(ecg_data_name).properties file
      */
