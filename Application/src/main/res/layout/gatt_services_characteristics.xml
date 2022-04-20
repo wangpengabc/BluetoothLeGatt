@@ -34,7 +34,8 @@
                 android:layout_height="wrap_content"
                 android:textSize="18sp"/>
     </LinearLayout>
-    <LinearLayout android:orientation="horizontal"
+    <LinearLayout android:id="@+id/ll_connection_state"
+                  android:orientation="horizontal"
                   android:layout_width="match_parent"
                   android:layout_height="wrap_content"
                   android:layout_margin="10dp">
@@ -50,7 +51,8 @@
                   android:text="@string/disconnected"
                   android:textSize="18sp"/>
     </LinearLayout>
-    <LinearLayout android:orientation="horizontal"
+    <LinearLayout android:id="@+id/ll_data_value"
+                  android:orientation="horizontal"
                   android:layout_width="match_parent"
                   android:layout_height="wrap_content"
                   android:layout_margin="10dp">
@@ -67,6 +69,12 @@
                   android:textSize="18sp"/>
     </LinearLayout>
 
+    <Button
+        android:id="@+id/btn_return_to_collection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:onClick="returnToCollectionControl"
+        android:text="@string/btn_return_to_collection" />
 
 
     <Button
@@ -109,6 +117,178 @@
 
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/ll_health_suggestion"
+        android:layout_width="match_parent"
+        android:layout_height="350dp"
+        android:background="@drawable/dotted_box"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:layout_editor_absoluteY="56dp">
+        <!--        app:layout_constraintStart_toStartOf="parent"-->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginTop="20dp"
+            android:text="健康建议"
+            android:textColor="@color/orange_red"
+            android:textSize="20sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:id="@+id/hrv_result_hr_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="心率(HR)"
+                android:textColor="@color/dark_grey"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/hrv_result_hr"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="5dp"
+                android:layout_weight="1"
+                android:text=""
+                android:textColor="@color/dark_grey"
+                android:textSize="20sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:id="@+id/hrv_proxy_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="心律变异性(HRV)"
+                android:textColor="@color/dark_grey"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/hrv_proxy_value"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="5dp"
+                android:layout_weight="1"
+                android:text="0"
+                android:textColor="@color/dark_grey"
+                android:textSize="20sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:id="@+id/hrv_value_judge"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:layout_weight="1"
+                android:text="HRV值正常"
+                android:textColor="@color/dark_grey"
+                android:textSize="18sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:id="@+id/hrv_tips"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Tips:如果心律变异性强度偏低，通常是身心疲惫引起，如有不适，请及时就医"
+                android:textColor="@color/dark_grey"
+                android:textSize="10sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:id="@+id/hrv_result_stress_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="精神压力"
+                android:textColor="@color/dark_grey"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/hrv_result_stress"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="正常"
+                android:textColor="@color/dark_grey"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:paddingLeft="10dp"
+            android:paddingRight="10dp">
+
+            <TextView
+                android:id="@+id/hrv_result_arrhy_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="心律失常分析"
+                android:textColor="@color/dark_grey"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/hrv_result_arrhy"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="无异常"
+                android:textColor="@color/dark_grey"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+    </LinearLayout>
 
     <LinearLayout
         android:id="@+id/ll_hrv"
@@ -339,15 +519,4 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
-    <Button
-        android:id="@+id/button2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Button" />
-
-    <Button
-        android:id="@+id/button3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Button" />
 </LinearLayout>

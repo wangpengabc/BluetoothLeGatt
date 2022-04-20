@@ -23,6 +23,47 @@ import hrv.calc.parameter.HRVParameter;
 
 
 public class QRSDetectorOffline{
+    /**
+     *  Self designed FIR, coefficients are generated with matlab tool
+     *
+     */
+    public static class FIR {
+        private int taps = 20;
+        // 0 ~ 24 Hz, fs: 200Hz
+        private double[] coefficients = new double[]{-3.222045052e-05, 0.004828066565, 0.01116866525, 0.02179740369, 0.03627296165,
+                0.05365377292, 0.07212975621, 0.08927904069, 0.1025425941, 0.1097823456,
+                0.1097823456, 0.1025425941, 0.08927904069, 0.07212975621, 0.05365377292,
+                0.03627296165, 0.02179740369, 0.01116866525, 0.004828066565, -3.222045052e-05};
+
+        private double[] buffer = new double[taps];
+        private int offset = 0;
+
+        public FIR() {
+            // init
+            for (int i = 0; i < taps; i++) {
+                buffer[i] = 0;
+            }
+            offset = 0;
+        }
+
+        public double filter(double new_input) {
+            double filtered_data = 0;
+
+            // save new_input to data_buffer
+            for (int i = 0; i < taps - 1; i++) {
+                buffer[i] = buffer[i + 1];
+            }
+            buffer[taps - 1] = new_input;
+
+            // filter coefficients * data
+            for (int i = 0; i < taps; i++) {
+                filtered_data += coefficients[i] * buffer[i];
+            }
+
+            return filtered_data;
+        }
+    }
+
 
     // Set ECG device frequency in samples per second here.
     private static int signal_frequency = 125;
@@ -31,11 +72,11 @@ public class QRSDetectorOffline{
 //    private double filter_highcut = 15.0;
 //    private int filter_order = 1;
 
-    private static int integration_window = 9;  // Change proportionally when adjusting frequency (in samples).
+    private static int integration_window = 15;  // Change proportionally when adjusting frequency (in samples).
 
     // self.findpeaks_limit = 0.35
     private static double findpeaks_limit = 0;
-    private static int findpeaks_spacing = 30;  // Change proportionally when adjusting frequency (in samples).
+    private static int findpeaks_spacing = 60;  // Change proportionally when adjusting frequency (in samples).
 
     public static int detectQRS(String data_save_dir, String ecg_data_name)  {
         // load data and convert to double type
@@ -49,11 +90,23 @@ public class QRSDetectorOffline{
 
         double[] ecg = new double[nsamp];
         for(int i=0;i<nsamp;i++){
-            ecg[i] = Double.parseDouble(ecg_data_raw.get(i));
+            ecg[i] = -Double.parseDouble(ecg_data_raw.get(i));
         }
 
+        // max-min normalization
+        double[] norm_data = max_min_norm(ecg);
+
+        // filter
+//        int Fs = 200; //Sampling Frequency in Hz
+//        int order = 1; //order of the filter
+//        int cutOff = 15; //Cut-off Frequency
+//        Butterworth flt = new Butterworth(ecg, Fs); //signal is of type double[]
+//        double[] ecg_filter = flt.lowPassFilter(order, cutOff); //get the result after filtering
+
+        double[] ecg_filter = bandpass_filter_own(norm_data);
+
         // detect
-        double[] ecg_diff = diff1d(ecg, nsamp);
+        double[] ecg_diff = diff1d(ecg_filter, nsamp);
         System.out.println("ecg_diff.size:");
         System.out.println(ecg_diff.length);
 
@@ -183,6 +236,38 @@ public class QRSDetectorOffline{
         else {return -1;}
     }
 
+    private static double[] max_min_norm(double[] data) {
+        double max = data[0];
+        double min = data[0];
+        for (int i = 0; i < data.length; i++) {
+            if (data[i] > max) {
+                max = data[i];
+            }
+            if (data[i] < min) {
+                min = data[i];
+            }
+        }
+
+        double[] norm_data = new double[data.length];
+        for (int i = 0; i < data.length; i++) {
+            norm_data[i] = (data[i] - min) / (max - min);
+        }
+
+        return norm_data;
+    }
+
+    private static double[] bandpass_filter_own(double[] data) {
+        FIR fir_instance = new FIR();
+
+        double[] filtered_data = new double[data.length];
+
+        for (int i=0; i<data.length; i++) {
+            filtered_data[i] = fir_instance.filter(data[i]);
+        }
+
+        return filtered_data;
+    }
+
     public static double[] upsample(double[] ecg_slice){
         double[] ecg_slice_upsample = new double[260];
 
@@ -305,8 +390,8 @@ public class QRSDetectorOffline{
      */
     public static int[] adjust_peak(double[] ecg, int[] peaks_indices){
         int data_len = ecg.length;
-        int pre_window = (int)(0.15 * (double)signal_frequency);
-        int post_window = (int)(0.1 * (double)signal_frequency);
+        int pre_window = (int)(0.15 * (double)signal_frequency * 2);
+        int post_window = (int)(0.1 * (double)signal_frequency * 2);
 
         // convert int array to List
         List<Integer> peaks_indices_list = new ArrayList<Integer>(peaks_indices.length);

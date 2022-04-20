@@ -109,11 +109,11 @@ public class HRHRVStressArrhy {
             }
         }
 
-        if(stress_metrics_count >= 3){
-            stress_metrics_count = 1;
-        }else{
-            stress_metrics_count = 0;
-        }
+//        if(stress_metrics_count >= 3){
+//            stress_metrics_count = 1;
+//        }else{
+//            stress_metrics_count = 0;
+//        }
 
         result.add(new HRVParameter(HRVParameterEnum.NON, (double)(stress_metrics_count), "Stress"));
         parameters_map.put("Stress", (double)(stress_metrics_count));

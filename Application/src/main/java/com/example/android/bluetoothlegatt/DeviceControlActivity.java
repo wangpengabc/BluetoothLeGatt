@@ -45,6 +45,7 @@ import android.widget.LinearLayout;
 import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.VideoView;
 
 import com.example.android.bluetoothlegatt.predict.HRHRVStressArrhy;
 import com.example.android.bluetoothlegatt.predict.QRSDetectorOffline;
@@ -87,6 +88,8 @@ public class DeviceControlActivity extends Activity {
 
     private TextView mConnectionState;
     private TextView mDataField;
+    private LinearLayout llDataValue;
+    private LinearLayout llConnectionState;
     private String mDeviceName;
     private String mDeviceAddress;
     private ExpandableListView mGattServicesList;
@@ -110,6 +113,7 @@ public class DeviceControlActivity extends Activity {
     private Button btnCollect;
     private Button btnRecord;
     private Button btnInference;
+    private Button btnReturnToCollection;
 
     // received data
     private List<String> recordData = null;
@@ -138,6 +142,14 @@ public class DeviceControlActivity extends Activity {
     private TextView hrvNN50;
     private TextView hrvStress;
     private TextView hrvArrhy;
+
+    // 健康指标
+    private LinearLayout llHealthSuggestion;
+    private TextView hrvResultHR;
+    private TextView hrvProxyValue;
+    private TextView hrvValueJudge;
+    private TextView hrvResultStress;
+    private TextView hrvResultArrhy;
 
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -303,6 +315,11 @@ public class DeviceControlActivity extends Activity {
         mConnectionState = (TextView) findViewById(R.id.connection_state);
         mDataField = (TextView) findViewById(R.id.data_value);
 
+        llDataValue = findViewById(R.id.ll_data_value);
+        llConnectionState = findViewById(R.id.ll_connection_state);
+        llDataValue.setVisibility(View.GONE);
+        llConnectionState.setVisibility(View.GONE);
+
         getActionBar().setTitle(mDeviceName);
         getActionBar().setDisplayHomeAsUpEnabled(true);
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
@@ -312,6 +329,8 @@ public class DeviceControlActivity extends Activity {
         btnCollect = findViewById(R.id.btn_collect);
         btnRecord = findViewById(R.id.btn_record);
         btnInference = findViewById(R.id.btn_inference);
+        btnReturnToCollection = findViewById(R.id.btn_return_to_collection);
+        btnReturnToCollection.setVisibility(View.GONE);
 
         // HRV指标
         llCollecting = findViewById(R.id.ll_collecting);
@@ -330,8 +349,15 @@ public class DeviceControlActivity extends Activity {
         hrvNN50 = findViewById(R.id.hrv_nn50);
         hrvStress = findViewById(R.id.hrv_stress);
         hrvArrhy = findViewById(R.id.hrv_arrhy);
+        // 健康建议
+        llHealthSuggestion = findViewById(R.id.ll_health_suggestion);
+        hrvResultHR = findViewById(R.id.hrv_result_hr);
+        hrvProxyValue = findViewById(R.id.hrv_proxy_value);
+        hrvValueJudge = findViewById(R.id.hrv_value_judge);
+        hrvResultStress = findViewById(R.id.hrv_result_stress);
+        hrvResultArrhy = findViewById(R.id.hrv_result_arrhy);
 
-        // plot
+                // plot
         ppgChart = findViewById(R.id.chart_ppg);
 
         drawDataQueue = new LinkedList<>();
@@ -339,6 +365,7 @@ public class DeviceControlActivity extends Activity {
 
         // data path for saving
         externalFilesDirPath = this.getExternalFilesDir(null).getAbsolutePath();
+//        externalFilesDirPath = "/storage/emulated/0/新建文件夹";
     }
 
     // btn control
@@ -352,8 +379,11 @@ public class DeviceControlActivity extends Activity {
             // UI 控制
             llCollecting.setVisibility(View.VISIBLE);
             llHRV.setVisibility(View.GONE);
+            llHealthSuggestion.setVisibility(View.GONE);
             btnRecord.setVisibility(View.VISIBLE);
+            btnCollect.setVisibility(View.VISIBLE);
             btnInference.setVisibility(View.VISIBLE);
+            btnReturnToCollection.setVisibility(View.GONE);
 
         }else{
             // 计算采样率
@@ -380,9 +410,21 @@ public class DeviceControlActivity extends Activity {
             // UI 控制
             llCollecting.setVisibility(View.VISIBLE);
             llHRV.setVisibility(View.GONE);
+            llHealthSuggestion.setVisibility(View.GONE);
+            btnCollect.setVisibility(View.VISIBLE);
             btnRecord.setVisibility(View.VISIBLE);
             btnInference.setVisibility(View.VISIBLE);
+            btnReturnToCollection.setVisibility(View.GONE);
         }
+    }
+
+    public void returnToCollectionControl(View view) {
+        btnRecord.setVisibility(View.VISIBLE);
+        btnInference.setVisibility(View.VISIBLE);
+        btnCollect.setVisibility(View.VISIBLE);
+        btnReturnToCollection.setVisibility(View.GONE);
+
+        llHealthSuggestion.setVisibility(View.GONE);
     }
 
     public void recordControl(View view) {
@@ -415,9 +457,12 @@ public class DeviceControlActivity extends Activity {
             } else {
                 // UI 控制
                 llCollecting.setVisibility(View.GONE);
-                llHRV.setVisibility(View.VISIBLE);
+                llHRV.setVisibility(View.GONE);
+                llHealthSuggestion.setVisibility(View.VISIBLE);
                 btnRecord.setVisibility(View.GONE);
                 btnInference.setVisibility(View.GONE);
+                btnCollect.setVisibility(View.GONE);
+                btnReturnToCollection.setVisibility(View.VISIBLE);
                 String parameters_save_name = externalFilesDirPath + "/" + dataSaveName + "_paramters.properties";
                 try {
                     Map<String, Double> parameters_map = HRHRVStressArrhy.loadFromFile(parameters_save_name);
@@ -435,6 +480,33 @@ public class DeviceControlActivity extends Activity {
                     hrvNN50.setText("NN50：" + String.format("%.2f", parameters_map.get("NN50")));
                     hrvStress.setText("Stress：" + String.format("%.2f", parameters_map.get("Stress")));
                     hrvArrhy.setText("Arrhy：" + String.format("%.2f", parameters_map.get("arrhy")));
+
+                    // 健康建议
+                    hrvResultHR.setText(String.format("%d", (int)(parameters_map.get("MEAN") * 1)));
+
+                    hrvProxyValue.setText(String.format("%d", (int)(parameters_map.get("SDNN") * 1000)));
+                    if ((int)(parameters_map.get("SDNN") * 1000) < 55) {
+                        hrvValueJudge.setText("HRV值偏低，请注意休息");
+                    } else {
+                        hrvValueJudge.setText("HRV值正常");
+                    }
+
+                    if (parameters_map.get("Stress") < 2) {
+                        hrvResultStress.setText("正常");
+                    } else if (parameters_map.get("Stress") == 2) {
+                        hrvResultStress.setText("偏高");
+                    } else if (parameters_map.get("Stress") > 2) {
+                        hrvResultStress.setText("高");
+                    }
+
+                    if (parameters_map.get("arrhy") == 0) {
+                        hrvResultArrhy.setText("无异常");
+                    } else if (parameters_map.get("arrhy") == 1) {
+                        hrvResultArrhy.setText("心动过缓");
+                    } else if (parameters_map.get("arrhy") == 2) {
+                        hrvResultArrhy.setText("心动过速");
+                    }
+
                 }catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -486,7 +558,7 @@ public class DeviceControlActivity extends Activity {
                         data_point = Integer.parseInt(s.substring(i*2, (i+1)*2), 16);
                         data_point_str = String.valueOf(data_point);
                         fileWriter.write(data_point_str);
-                        fileWriter.write(",0\n");
+                        fileWriter.write(","+data_point_str+"\n");
                     }
                 }
                 fileWriter.close();
