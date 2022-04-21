@@ -114,6 +114,16 @@
             android:layout_width="match_parent"
             android:layout_height="150dp"
             tools:ignore="MissingClass"></lecho.lib.hellocharts.view.LineChartView>
+        <TextView
+            android:id="@+id/countdown"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textSize="24sp"
+            android:text="倒计时：30 秒"
+            android:textColor="@color/orange_red"
+            android:visibility="invisible"
+            />
 
     </LinearLayout>
 

@@ -29,6 +29,7 @@ import android.content.ServiceConnection;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
@@ -150,6 +151,10 @@ public class DeviceControlActivity extends Activity {
     private TextView hrvValueJudge;
     private TextView hrvResultStress;
     private TextView hrvResultArrhy;
+
+    // Count Down
+    private TextView countDown;
+    private CountDownTimer timer;
 
     // Code to manage Service lifecycle.
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
@@ -357,7 +362,10 @@ public class DeviceControlActivity extends Activity {
         hrvResultStress = findViewById(R.id.hrv_result_stress);
         hrvResultArrhy = findViewById(R.id.hrv_result_arrhy);
 
-                // plot
+        // 倒计时
+        countDown = findViewById(R.id.countdown);
+
+        // plot
         ppgChart = findViewById(R.id.chart_ppg);
 
         drawDataQueue = new LinkedList<>();
@@ -385,7 +393,43 @@ public class DeviceControlActivity extends Activity {
             btnInference.setVisibility(View.VISIBLE);
             btnReturnToCollection.setVisibility(View.GONE);
 
+            // 设置定时器
+            countDown.setVisibility(View.VISIBLE);
+            // 设置定时器,加300是为了从30开始计数
+            timer = new CountDownTimer(60 * 1000 + 300, 1000) {
+                @Override
+                public void onFinish() {
+                    countDown.setText("采集完毕");
+                    // 相关UI和控制变量
+                    btnCollect.setText("开始采集");
+                    isRecord = false;
+                    // UI 控制
+                    llCollecting.setVisibility(View.VISIBLE);
+                    llHRV.setVisibility(View.GONE);
+                    llHealthSuggestion.setVisibility(View.GONE);
+                    btnCollect.setVisibility(View.VISIBLE);
+                    btnRecord.setVisibility(View.VISIBLE);
+                    btnInference.setVisibility(View.VISIBLE);
+                    btnReturnToCollection.setVisibility(View.GONE);
+                    isRecord = false;
+                    if (timer != null) {
+                        timer.cancel();
+                        timer = null;
+                    }
+                }
+
+                @Override
+                public void onTick(long millisUntilFinished) {
+                    countDown.setText("倒计时：" + millisUntilFinished / 1000 + "秒");
+                }
+            }.start();
         }else{
+            // 如果人为停止采集，那么摧毁 timer
+            if (timer != null) {
+                timer.cancel();
+                timer = null;
+            }
+
             // 计算采样率
             endTime = System.currentTimeMillis(); //结束时间
             runTime = endTime - startTime;
@@ -595,6 +639,10 @@ public class DeviceControlActivity extends Activity {
         super.onDestroy();
         unbindService(mServiceConnection);
         mBluetoothLeService = null;
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
     }
 
     @Override
